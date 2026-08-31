@@ -15,7 +15,7 @@ services:
 ```
 # Bot
 
-You need the Members intent enabled. I recommend disabling User Application and setting to non public. Your OAUTH link should look like `https://discord.com/oauth2/authorize?client_id=1543820074111082586&permissions=3104&integration_type=0&scope=bot`
+You need the Members intent enabled. I recommend disabling User Application and setting to non public. Your OAUTH link should look like `https://discord.com/oauth2/authorize?client_id=1543820074111082586&permissions=3088&integration_type=0&scope=bot`
 
 # Testing on Linux
 
