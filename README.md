@@ -1,5 +1,3 @@
-```
-
 # Using Docker Compose
 
 This is the recommended method. 
