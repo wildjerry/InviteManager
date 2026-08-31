@@ -13,4 +13,4 @@ COPY bot.py .
 RUN useradd --create-home bot
 USER bot
 
-CMD ["python", "bot.py"]
+CMD ["python", "-u", "bot.py"]
