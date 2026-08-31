@@ -15,8 +15,8 @@ intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # Thresholds
-MAX_USES = 5
-MAX_EXPIRY = 604800  # 7 days in seconds
+MAX_USES = int(os.environ["MAX_USES"])
+MAX_EXPIRY = int(os.environ["MAX_EXPIRY"])  # 7 days in seconds
 
 # Store invites per guild
 guild_invites = {}
@@ -32,15 +32,25 @@ async def log(message):
         await channel.send(message)
 
 
-def is_trusted(inviter):
-    """Return True if the inviter has the configured trusted role."""
-    if not inviter or not isinstance(inviter, discord.Member):
+#rewritten to fix User/Member inconsistency
+async def is_trusted(inviter, guild):
+
+    if not inviter:
         return False
 
-    return any(role.id == TRUSTED_ROLE_ID for role in inviter.roles)
+    member = guild.get_member(inviter.id) #uses local cache, maintained continuiosly by lib based on events
+
+    if member is None:
+        try:
+            member = await guild.fetch_member(inviter.id)
+        except discord.NotFound:
+            print(f"failed to fetch member, {inviter=}")
+            return False
+
+    return any(role.id == TRUSTED_ROLE_ID for role in member.roles)
 
 
-async def enforce_invite_limits(invite):
+async def enforce_invite_limits(invite, warn=True):
     delete_reason = None
 
     if invite.max_uses is None or invite.max_uses > MAX_USES:
@@ -76,29 +86,32 @@ async def enforce_invite_limits(invite):
     if delete_reason:
         creator = invite.inviter
 
-        if is_trusted(creator):
+        if await is_trusted(creator, invite.guild):
             # Trusted role: only send a warning
-            try:
-                await creator.send(
-                    f"⚠️ WARNING: Your invite `{invite.code}` in "
-                    f"'{invite.guild.name}' violates the recommended "
-                    f"limits ({delete_reason}), but it will not be deleted "
-                    f"because you have the trusted role."
-                )
-            except discord.Forbidden:
-                pass
+            if warn:
+                try:
+                    await creator.send(
+                        f"⚠️ WARNING: Your invite `{invite.code}` in "
+                        f"'{invite.guild.name}' violates the recommended "
+                        f"limits ({delete_reason}), but it will not be deleted "
+                        f"because you have the trusted role."
+                    )
+                except discord.Forbidden:
+                    pass
 
+             #avoid spamming admins 
             await log(
-                f"⚠️ WARNING: Trusted user {creator} created invite "
-                f"`{invite.code}` violating limits: {delete_reason}"
+                    f"⚠️ WARNING: Trusted user {creator} created invite "
+                    f"`{invite.code}` violating limits: {delete_reason}"
             )
 
             return False  # Do not delete
 
         else:
             # Normal user: delete invite and send DM
-            await invite.delete()
             deleted_by_bot.add(invite.code)
+            await invite.delete()
+
 
             if creator:
                 try:
@@ -129,9 +142,9 @@ async def on_ready():
         guild_invites[guild.id] = await guild.invites()
 
         for invite in list(guild_invites[guild.id]):
-            await enforce_invite_limits(invite)
+            await enforce_invite_limits(invite, warn=False)
 
-    print("Invite cache initialized and limits enforced.")
+    await log("Bot Restarted:Invite cache reinitialized and limits enforced.")
 
 
 @bot.event

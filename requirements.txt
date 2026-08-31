@@ -1,0 +1,2 @@
+# not pinning dependendincies in favor of letting builds use newest version on their own
+discord.py==2.7.1
