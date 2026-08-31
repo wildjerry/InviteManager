@@ -15,4 +15,4 @@ set +a
 
 # Using Docker Compose
 
-TBD
+This is the recommended method. 
